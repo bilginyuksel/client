@@ -1,4 +1,4 @@
-package main
+package client
 
 import (
 	"bytes"
@@ -83,7 +83,7 @@ func (c *Client) ParseXML(ctx context.Context, request *Request, response interf
 
 // Do Execute an http request with the given request
 func (c *Client) Do(ctx context.Context, request *Request) (*http.Response, error) {
-	uri, err := request.URI()
+	uri, err := request.URL()
 	if err != nil {
 		return nil, err
 	}

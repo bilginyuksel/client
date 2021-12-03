@@ -1,21 +1,28 @@
 package main
 
-import "context"
+import (
+	"context"
+	"log"
+
+	"github.com/bilginyuksel/client"
+)
 
 type MockClient struct {
-	Client
+	*client.Client
 }
 
 type Mock struct{}
 
 func main() {
-	cli := New()
+	cli := MockClient{Client: client.New()}
 
-	var mock Mock
 	req := cli.NewRequest(context.Background()).
 		Path("/orders/%d", 12323)
 
+	var mock Mock
 	if err := cli.GetJSON(context.Background(), req, &mock); err != nil {
 		panic(err)
 	}
+
+	log.Println(mock)
 }

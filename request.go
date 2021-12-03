@@ -1,4 +1,4 @@
-package main
+package client
 
 import (
 	"context"
@@ -30,6 +30,12 @@ func (c *Client) NewRequest(ctx context.Context) *Request {
 		query:   make(map[string][]string),
 		headers: make(map[string][]string),
 	}
+}
+
+// Host set the host
+func (r *Request) Host(host string) *Request {
+	r.host = host
+	return r
 }
 
 // Method set a method to given request
@@ -82,7 +88,7 @@ func (r *Request) SetBasicAuth(username, password string) *Request {
 	return r
 }
 
-func (r *Request) URI() (string, error) {
+func (r *Request) URL() (string, error) {
 	rawpath := fmt.Sprintf("%s%s", r.host, r.path)
 	url, err := urlpkg.Parse(rawpath)
 	if err != nil {
@@ -90,7 +96,7 @@ func (r *Request) URI() (string, error) {
 	}
 
 	url.RawQuery = r.getEncodedQueryParameters()
-	return url.RequestURI(), nil
+	return url.String(), nil
 }
 
 func (r *Request) getEncodedQueryParameters() string {
