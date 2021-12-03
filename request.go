@@ -38,6 +38,11 @@ func (r *Request) Host(host string) *Request {
 	return r
 }
 
+func (r *Request) Body(body []byte) *Request {
+	r.body = body
+	return r
+}
+
 // Method set a method to given request
 func (r *Request) Method(method string) *Request {
 	r.method = method
