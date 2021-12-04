@@ -1,0 +1,36 @@
+name: Go
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.17
+
+    - name: Build
+      run: go build -v ./...
+
+    - name: Test
+      run: go test -v ./... -coverprofile cover.out
+    
+    - name: Print coverage
+      run:  go tool cover -func cover.out
+      
+    - name: Output coverage
+      run: go tool cover -html=cover.out -o coverage.html
+    
+    - uses: actions/upload-artifact@v2
+      with:
+        name: coverage
+        path: coverage.html      
