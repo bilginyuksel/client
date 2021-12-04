@@ -10,6 +10,11 @@ import (
 	"time"
 )
 
+const (
+	_defaultMaxRetry      = 3
+	_defaultRetryInterval = 1000 * time.Millisecond
+)
+
 // DeadLetter ...
 type DeadLetter interface {
 	Save(letter interface{}) error
@@ -27,10 +32,9 @@ type Client struct {
 // New create a client with multiple options or get the default client without providing any options
 func New(opts ...Option) *Client {
 	cli := &Client{
-		host:          "",
 		httpClient:    &http.Client{},
-		maxRetry:      3,
-		retryInterval: 1000 * time.Millisecond,
+		maxRetry:      _defaultMaxRetry,
+		retryInterval: _defaultRetryInterval,
 		deadLetter:    nil,
 	}
 
@@ -83,12 +87,12 @@ func (c *Client) ParseXML(ctx context.Context, request *Request, response interf
 
 // Do Execute an http request with the given request
 func (c *Client) Do(ctx context.Context, request *Request) (*http.Response, error) {
-	uri, err := request.URL()
+	url, err := request.URL()
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, request.method, uri, bytes.NewBuffer(request.body))
+	req, err := http.NewRequestWithContext(ctx, request.method, url, bytes.NewBuffer(request.body))
 	if err != nil {
 		return nil, err
 	}
