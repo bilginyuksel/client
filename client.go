@@ -46,6 +46,16 @@ func New(opts ...Option) *Client {
 	return cli
 }
 
+// PutJSON execute a put method with the given request and then unmarshal the json response body
+func (c *Client) PutJSON(ctx context.Context, request *Request, response interface{}) error {
+	return c.ParseJSON(ctx, request.Method(http.MethodPut), response)
+}
+
+// PostJSON execute a post method with the given request and then unmarshal the json response body
+func (c *Client) PostJSON(ctx context.Context, request *Request, response interface{}) error {
+	return c.ParseJSON(ctx, request.Method(http.MethodPost), response)
+}
+
 // GetJSON execute a get method with the given request and then unmarshal the json response body
 func (c *Client) GetJSON(ctx context.Context, request *Request, response interface{}) error {
 	return c.ParseJSON(ctx, request.Method(http.MethodGet), response)

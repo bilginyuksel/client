@@ -17,6 +17,26 @@ import (
 
 var ctx = context.Background()
 
+func TestPostJSON_SuccessfulRequest_ExpectPutMethodInRequest(t *testing.T) {
+	s, recorder := aduket.NewServer(http.MethodPost, "/test", aduket.StatusCode(200))
+	cli := client.New(client.WithHost(s.URL))
+	req := cli.NewRequest(ctx).Path("/test").AddHeader("X-R", "req")
+
+	_ = cli.PostJSON(ctx, req, nil)
+	// if there is no request captured on PUT aduket.URL/test, it will fail
+	recorder.AssertHeaderContains(t, http.Header{"X-R": []string{"req"}})
+}
+
+func TestPutJSON_SuccessfulRequest_ExpectPutMethodInRequest(t *testing.T) {
+	s, recorder := aduket.NewServer(http.MethodPut, "/test", aduket.StatusCode(200))
+	cli := client.New(client.WithHost(s.URL))
+	req := cli.NewRequest(ctx).Path("/test").AddHeader("X-R", "req")
+
+	_ = cli.PutJSON(ctx, req, nil)
+	// if there is no request captured on PUT aduket.URL/test, it will fail
+	recorder.AssertHeaderContains(t, http.Header{"X-R": []string{"req"}})
+}
+
 func TestGetJSON_SuccessfulRequest_ExpectGETMethodInRequest(t *testing.T) {
 	s, recorder := aduket.NewServer(http.MethodGet, "/test", aduket.StatusCode(200))
 	cli := client.New(client.WithHost(s.URL), client.WithHTTPClient(&http.Client{}))
