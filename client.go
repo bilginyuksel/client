@@ -87,6 +87,15 @@ func (c *Client) ParseXML(ctx context.Context, request *Request, response interf
 
 // Do Execute an http request with the given request
 func (c *Client) Do(ctx context.Context, request *Request) (*http.Response, error) {
+	// TODO: retrying mechanism
+	req, err := c.prepareRequest(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+	return c.httpClient.Do(req)
+}
+
+func (c *Client) prepareRequest(ctx context.Context, request *Request) (*http.Request, error) {
 	url, err := request.URL()
 	if err != nil {
 		return nil, err
@@ -101,6 +110,6 @@ func (c *Client) Do(ctx context.Context, request *Request) (*http.Response, erro
 	for _, manipulator := range request.manipulators {
 		manipulator(req)
 	}
-	// TODO: retrying mechanism
-	return c.httpClient.Do(req)
+
+	return req, nil
 }
