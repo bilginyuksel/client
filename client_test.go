@@ -2,9 +2,10 @@ package client_test
 
 import (
 	"context"
-	"log"
 	"net/http"
+	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/bilginyuksel/client"
 	"github.com/streetbyters/aduket"
@@ -14,7 +15,7 @@ import (
 var ctx = context.Background()
 
 func TestGetJSON_SuccessfulRequest_ExpectGETMethodInRequest(t *testing.T) {
-	s, recorder := aduket.NewServer(http.MethodGet, "/test")
+	s, recorder := aduket.NewServer(http.MethodGet, "/test", aduket.StatusCode(200))
 	cli := client.New(client.WithHost(s.URL))
 	req := cli.NewRequest(ctx).Path("/test").
 		Method(http.MethodPatch).
@@ -94,6 +95,53 @@ func TestParse_DoFailed_ReturnErr(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
+func TestDo_5XXStatusCode_RetryNTimes(t *testing.T) {
+	var (
+		_maxRetryCount = 3
+		_retryInterval = 1 * time.Millisecond
+
+		count             int
+		xRetryHeaderValue string
+		expectedCount     = 4
+	)
+
+	s := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		count++
+		xRetryHeaderValue = r.Header.Get("X-Retry")
+		rw.WriteHeader(500)
+	}))
+
+	cli := client.New(client.WithHost(s.URL), client.WithRetry(_maxRetryCount, _retryInterval))
+	_, _ = cli.Do(ctx, cli.NewRequest(ctx))
+
+	assert.Equal(t, expectedCount, count)
+	assert.Equal(t, "3", xRetryHeaderValue)
+}
+
+func TestDo_5XXStatusCode_RetryIntervalShouldIncreaseExponentialy(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+		return
+	}
+	var (
+		_maxRetryCount = 2
+		_retryInterval = 500 * time.Millisecond
+
+		capturedTimes []time.Time
+	)
+
+	s := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		capturedTimes = append(capturedTimes, time.Now())
+		rw.WriteHeader(500)
+	}))
+
+	cli := client.New(client.WithHost(s.URL), client.WithRetry(_maxRetryCount, _retryInterval))
+	_, _ = cli.Do(ctx, cli.NewRequest(ctx))
+
+	assert.GreaterOrEqual(t, capturedTimes[1].Sub(capturedTimes[0]), 500*time.Millisecond)
+	assert.GreaterOrEqual(t, capturedTimes[2].Sub(capturedTimes[1]), 750*time.Millisecond)
+}
+
 func TestDo_ValidRequest_CaptureTheHTTPRequestWithTheGivenParameters(t *testing.T) {
 	s, recorder := aduket.NewServer(http.MethodPost, "/basket/1")
 	cli := client.New(client.WithHost(s.URL))
@@ -117,7 +165,6 @@ func TestDo_ValidRequest_CaptureTheHTTPRequestWithTheGivenParameters(t *testing.
 	}
 
 	assert.Nil(t, err)
-	log.Println(recorder.Header)
 	recorder.AssertHeaderContains(t, expectedHeaders)
 	recorder.AssertStringBodyEqual(t, "hello world")
 	recorder.AssertQueryParamEqual(t, "customerId", []string{"12321"})

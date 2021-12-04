@@ -5,7 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"encoding/xml"
+	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"time"
 )
@@ -88,13 +90,34 @@ func (c *Client) Parse(ctx context.Context, request *Request, response interface
 }
 
 // Do Execute an http request with the given request
-func (c *Client) Do(ctx context.Context, request *Request) (*http.Response, error) {
-	// TODO: retrying mechanism
+func (c *Client) Do(ctx context.Context, request *Request) (res *http.Response, err error) {
+	// TODO: await rate limiter
 	req, err := c.prepareRequest(ctx, request)
 	if err != nil {
 		return nil, err
 	}
-	return c.httpClient.Do(req)
+
+	return c.do(ctx, req, 1)
+}
+
+func (c *Client) do(ctx context.Context, req *http.Request, retryCount int) (res *http.Response, err error) {
+	res, err = c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if c.shouldRetry(retryCount, res.StatusCode) {
+		computedRetryInterval := float64(c.retryInterval.Milliseconds()) * math.Pow(1.5, float64(retryCount))
+		time.Sleep(time.Millisecond * time.Duration(computedRetryInterval))
+		req.Header.Set("X-Retry", fmt.Sprintf("%d", retryCount))
+		return c.do(ctx, req, retryCount+1)
+	}
+
+	return res, err
+}
+
+func (c *Client) shouldRetry(retryCount int, statusCode int) bool {
+	return retryCount <= c.maxRetry && statusCode >= 500 && statusCode <= 599
 }
 
 func (c *Client) prepareRequest(ctx context.Context, request *Request) (*http.Request, error) {
