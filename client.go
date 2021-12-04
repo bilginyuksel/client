@@ -18,6 +18,8 @@ import (
 const (
 	_defaultMaxRetry      = 3
 	_defaultRetryInterval = 1000 * time.Millisecond
+
+	_retryIntervalCoef = 1.5
 )
 
 type Client struct {
@@ -57,17 +59,13 @@ func (c *Client) GetXML(ctx context.Context, request *Request, response interfac
 // ParseJSON send a request with given request properties
 // Read the body and run json unmarshaler to fill the given response
 func (c *Client) ParseJSON(ctx context.Context, request *Request, response interface{}) error {
-	return c.Parse(ctx, request, response, func(bodyBytes []byte, response interface{}) error {
-		return json.Unmarshal(bodyBytes, response)
-	})
+	return c.Parse(ctx, request, response, json.Unmarshal)
 }
 
 // ParseXML send a request with the given request properties
 // Read the body and run xml unmarshaler to fill the given response
 func (c *Client) ParseXML(ctx context.Context, request *Request, response interface{}) error {
-	return c.Parse(ctx, request, response, func(bodyBytes []byte, response interface{}) error {
-		return xml.Unmarshal(bodyBytes, response)
-	})
+	return c.Parse(ctx, request, response, xml.Unmarshal)
 }
 
 // Parse send a request with the given request properties
@@ -120,7 +118,7 @@ func (c *Client) do(ctx context.Context, req *http.Request, retryCount int) (res
 	}
 
 	if c.shouldRetry(retryCount, res.StatusCode) {
-		computedRetryInterval := float64(c.retryInterval.Milliseconds()) * math.Pow(1.5, float64(retryCount))
+		computedRetryInterval := float64(c.retryInterval.Milliseconds()) * math.Pow(_retryIntervalCoef, float64(retryCount))
 		time.Sleep(time.Millisecond * time.Duration(computedRetryInterval))
 		req.Header.Set("X-Retry", fmt.Sprintf("%d", retryCount))
 		return c.do(ctx, req, retryCount+1)
