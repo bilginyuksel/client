@@ -10,6 +10,8 @@ import (
 	"math"
 	"net/http"
 	"time"
+
+	"golang.org/x/time/rate"
 )
 
 const (
@@ -28,7 +30,7 @@ type Client struct {
 	maxRetry      int
 	retryInterval time.Duration
 	deadLetter    DeadLetter
-	// TODO: rate limiter
+	rateLimiter   *rate.Limiter
 }
 
 // New create a client with multiple options or get the default client without providing any options
@@ -37,7 +39,6 @@ func New(opts ...Option) *Client {
 		httpClient:    &http.Client{},
 		maxRetry:      _defaultMaxRetry,
 		retryInterval: _defaultRetryInterval,
-		deadLetter:    nil,
 	}
 
 	for _, opt := range opts {
@@ -91,7 +92,10 @@ func (c *Client) Parse(ctx context.Context, request *Request, response interface
 
 // Do Execute an http request with the given request
 func (c *Client) Do(ctx context.Context, request *Request) (res *http.Response, err error) {
-	// TODO: await rate limiter
+	if err := c.awaitRateLimiter(ctx); err != nil {
+		return nil, err
+	}
+
 	req, err := c.prepareRequest(ctx, request)
 	if err != nil {
 		return nil, err
@@ -137,4 +141,11 @@ func (c *Client) prepareRequest(ctx context.Context, request *Request) (*http.Re
 	}
 
 	return req, nil
+}
+
+func (c *Client) awaitRateLimiter(ctx context.Context) error {
+	if c.rateLimiter == nil {
+		return nil
+	}
+	return c.rateLimiter.Wait(ctx)
 }

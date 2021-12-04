@@ -3,6 +3,8 @@ package client
 import (
 	"net/http"
 	"time"
+
+	"golang.org/x/time/rate"
 )
 
 type Option func(c *Client)
@@ -33,5 +35,12 @@ func WithDeadLetter(deadLetter DeadLetter) Option {
 func WithHTTPClient(httpClient *http.Client) Option {
 	return func(c *Client) {
 		c.httpClient = httpClient
+	}
+}
+
+// WithRateLimit create client option function with http client
+func WithRateLimit(interval time.Duration, requests int) Option {
+	return func(c *Client) {
+		c.rateLimiter = rate.NewLimiter(rate.Every(interval), requests)
 	}
 }

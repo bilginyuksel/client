@@ -16,7 +16,7 @@ var ctx = context.Background()
 
 func TestGetJSON_SuccessfulRequest_ExpectGETMethodInRequest(t *testing.T) {
 	s, recorder := aduket.NewServer(http.MethodGet, "/test", aduket.StatusCode(200))
-	cli := client.New(client.WithHost(s.URL))
+	cli := client.New(client.WithHost(s.URL), client.WithHTTPClient(&http.Client{}))
 	req := cli.NewRequest(ctx).Path("/test").
 		Method(http.MethodPatch).
 		AddHeader("X-R", "req")
@@ -140,6 +140,24 @@ func TestDo_5XXStatusCode_RetryIntervalShouldIncreaseExponentialy(t *testing.T) 
 
 	assert.GreaterOrEqual(t, capturedTimes[1].Sub(capturedTimes[0]), 500*time.Millisecond)
 	assert.GreaterOrEqual(t, capturedTimes[2].Sub(capturedTimes[1]), 750*time.Millisecond)
+}
+
+func TestDo_MultipleRequestsAtOnce_RateLimitAndWait(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+		return
+	}
+
+	startTime := time.Now()
+	server, _ := aduket.NewServer(http.MethodGet, "/test", aduket.StatusCode(200))
+	cli := client.New(client.WithHost(server.URL), client.WithRateLimit(65*time.Millisecond, 50))
+
+	for i := 0; i < 100; i++ {
+		ctx = context.Background()
+		_, _ = cli.Do(ctx, cli.NewRequest(ctx).Path("/test"))
+	}
+
+	assert.GreaterOrEqual(t, time.Since(startTime), 3*time.Second)
 }
 
 func TestDo_ValidRequest_CaptureTheHTTPRequestWithTheGivenParameters(t *testing.T) {
