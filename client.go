@@ -7,6 +7,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"net/http"
 	"time"
@@ -18,11 +19,6 @@ const (
 	_defaultMaxRetry      = 3
 	_defaultRetryInterval = 1000 * time.Millisecond
 )
-
-// DeadLetter ...
-type DeadLetter interface {
-	Save(letter interface{}) error
-}
 
 type Client struct {
 	httpClient    *http.Client
@@ -101,7 +97,20 @@ func (c *Client) Do(ctx context.Context, request *Request) (res *http.Response, 
 		return nil, err
 	}
 
-	return c.do(ctx, req, 1)
+	res, err = c.do(ctx, req, 1)
+	if err != nil {
+		return nil, err
+	}
+
+	// if still 5XX server error then we need to record this request to ensure consistency
+	if res.StatusCode >= 500 && res.StatusCode <= 599 {
+		if err := c.saveRequest(request, req.URL.String()); err != nil {
+			log.Printf("request could not send to deadletter: %v, request: %v\n", err, req)
+			return res, fmt.Errorf("letter could not saved: %v", err)
+		}
+	}
+
+	return res, err
 }
 
 func (c *Client) do(ctx context.Context, req *http.Request, retryCount int) (res *http.Response, err error) {
@@ -122,6 +131,19 @@ func (c *Client) do(ctx context.Context, req *http.Request, retryCount int) (res
 
 func (c *Client) shouldRetry(retryCount int, statusCode int) bool {
 	return retryCount <= c.maxRetry && statusCode >= 500 && statusCode <= 599
+}
+
+func (c *Client) saveRequest(req *Request, url string) error {
+	if c.deadLetter == nil {
+		return nil
+	}
+
+	return c.deadLetter.Save(&Letter{
+		Method:  req.method,
+		Body:    req.body,
+		Headers: req.headers,
+		URL:     url,
+	})
 }
 
 func (c *Client) prepareRequest(ctx context.Context, request *Request) (*http.Request, error) {

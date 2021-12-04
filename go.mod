@@ -12,6 +12,7 @@ require (
 )
 
 require (
+	github.com/golang/mock v1.6.0
 	github.com/labstack/echo v3.3.10+incompatible // indirect
 	github.com/labstack/gommon v0.3.0 // indirect
 	github.com/mattn/go-colorable v0.1.4 // indirect
@@ -20,8 +21,8 @@ require (
 	github.com/valyala/fasttemplate v1.0.1 // indirect
 	github.com/yudai/pp v2.0.1+incompatible
 	golang.org/x/crypto v0.0.0-20200206161412-a0c6ece9d31a // indirect
-	golang.org/x/net v0.0.0-20190404232315-eb5bcb51f2a3 // indirect
-	golang.org/x/sys v0.0.0-20191120155948-bd437916bb0e // indirect
-	golang.org/x/text v0.3.0 // indirect
+	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4 // indirect
+	golang.org/x/sys v0.0.0-20210510120138-977fb7262007 // indirect
+	golang.org/x/text v0.3.3 // indirect
 	golang.org/x/time v0.0.0-20211116232009-f0f3c7e86c11
 )

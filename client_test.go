@@ -2,12 +2,15 @@ package client_test
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/bilginyuksel/client"
+	gomock "github.com/golang/mock/gomock"
 	"github.com/streetbyters/aduket"
 	"github.com/stretchr/testify/assert"
 )
@@ -140,6 +143,33 @@ func TestDo_5XXStatusCode_RetryIntervalShouldIncreaseExponentialy(t *testing.T) 
 
 	assert.GreaterOrEqual(t, capturedTimes[1].Sub(capturedTimes[0]), 500*time.Millisecond)
 	assert.GreaterOrEqual(t, capturedTimes[2].Sub(capturedTimes[1]), 750*time.Millisecond)
+}
+
+func TestDo_ReachMaxRetry_SaveRequestToDeadLetter(t *testing.T) {
+	s, _ := aduket.NewServer(http.MethodGet, "/test", aduket.StatusCode(502))
+
+	mockDeadLetter := client.NewMockDeadLetter(gomock.NewController(t))
+	mockDeadLetter.EXPECT().Save(&client.Letter{
+		Method:  "GET",
+		URL:     fmt.Sprintf("%s/test", s.URL),
+		Headers: map[string][]string{"X-Retry": {"3"}},
+	})
+
+	cli := client.New(client.WithHost(s.URL), client.WithDeadLetter(mockDeadLetter), client.WithRetry(3, 1*time.Millisecond))
+	_, _ = cli.Do(ctx, cli.NewRequest(ctx).Path("/test"))
+}
+
+func TestDo_SaveDeadLetterFailedAfterReachingMaxRetry_ReturnErr(t *testing.T) {
+	s, _ := aduket.NewServer(http.MethodGet, "/test", aduket.StatusCode(502))
+
+	mockDeadLetter := client.NewMockDeadLetter(gomock.NewController(t))
+	mockDeadLetter.EXPECT().Save(gomock.Any()).Return(errors.New("error"))
+
+	cli := client.New(client.WithHost(s.URL), client.WithDeadLetter(mockDeadLetter), client.WithRetry(1, 1*time.Millisecond))
+	_, err := cli.Do(ctx, cli.NewRequest(ctx).Path("/test"))
+
+	assert.NotNil(t, err)
+	assert.Equal(t, "letter could not saved: error", err.Error())
 }
 
 func TestDo_MultipleRequestsAtOnce_RateLimitAndWait(t *testing.T) {
