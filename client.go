@@ -100,20 +100,16 @@ func (c *Client) Do(ctx context.Context, request *Request) (res *http.Response, 
 		return nil, err
 	}
 
-	req, err := c.prepareRequest(ctx, request)
-	if err != nil {
-		return nil, err
-	}
-
-	res, err = c.do(ctx, req, 1)
+	res, err = c.do(ctx, request, 1)
 	if err != nil {
 		return nil, err
 	}
 
 	// if still 5XX server error then we need to record this request to ensure consistency
 	if res.StatusCode >= 500 && res.StatusCode <= 599 {
-		if err := c.saveRequest(request, req.URL.String()); err != nil {
-			log.Printf("request could not send to deadletter: %v, request: %v\n", err, req)
+		url, _ := request.URL()
+		if err := c.saveRequest(request, url); err != nil {
+			log.Printf("request could not send to deadletter: %v, request: %v\n", err, request)
 			return res, fmt.Errorf("letter could not saved: %v", err)
 		}
 	}
@@ -121,7 +117,12 @@ func (c *Client) Do(ctx context.Context, request *Request) (res *http.Response, 
 	return res, err
 }
 
-func (c *Client) do(ctx context.Context, req *http.Request, retryCount int) (res *http.Response, err error) {
+func (c *Client) do(ctx context.Context, request *Request, retryCount int) (res *http.Response, err error) {
+	req, err := c.prepareRequest(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+
 	res, err = c.httpClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -131,7 +132,7 @@ func (c *Client) do(ctx context.Context, req *http.Request, retryCount int) (res
 		computedRetryInterval := float64(c.retryInterval.Milliseconds()) * math.Pow(_retryIntervalCoef, float64(retryCount))
 		time.Sleep(time.Millisecond * time.Duration(computedRetryInterval))
 		req.Header.Set("X-Retry", fmt.Sprintf("%d", retryCount))
-		return c.do(ctx, req, retryCount+1)
+		return c.do(ctx, request, retryCount+1)
 	}
 
 	return res, err
