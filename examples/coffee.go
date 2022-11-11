@@ -58,7 +58,7 @@ func main() {
 	coffeeBytes, _ := json.Marshal(coffee)
 
 	ctx := context.Background()
-	req := c.NewRequest(ctx).
+	req := c.NewRequest().
 		Path("/api").
 		Method(http.MethodPost).
 		Body(coffeeBytes).

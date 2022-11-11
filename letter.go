@@ -1,5 +1,6 @@
 package client
 
+// Letter is a letter that is sent to deadletter
 type Letter struct {
 	Method  string              `json:"method"`
 	URL     string              `json:"url"`

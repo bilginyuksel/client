@@ -20,7 +20,7 @@ var ctx = context.Background()
 func TestPostJSON_SuccessfulRequest_ExpectPutMethodInRequest(t *testing.T) {
 	s, recorder := aduket.NewServer(http.MethodPost, "/test", aduket.StatusCode(200))
 	cli := client.New(client.WithHost(s.URL))
-	req := cli.NewRequest(ctx).Path("/test").AddHeader("X-R", "req")
+	req := cli.NewRequest().Path("/test").AddHeader("X-R", "req")
 
 	_ = cli.PostJSON(ctx, req, nil)
 	// if there is no request captured on PUT aduket.URL/test, it will fail
@@ -30,7 +30,7 @@ func TestPostJSON_SuccessfulRequest_ExpectPutMethodInRequest(t *testing.T) {
 func TestPutJSON_SuccessfulRequest_ExpectPutMethodInRequest(t *testing.T) {
 	s, recorder := aduket.NewServer(http.MethodPut, "/test", aduket.StatusCode(200))
 	cli := client.New(client.WithHost(s.URL))
-	req := cli.NewRequest(ctx).Path("/test").AddHeader("X-R", "req")
+	req := cli.NewRequest().Path("/test").AddHeader("X-R", "req")
 
 	_ = cli.PutJSON(ctx, req, nil)
 	// if there is no request captured on PUT aduket.URL/test, it will fail
@@ -40,7 +40,7 @@ func TestPutJSON_SuccessfulRequest_ExpectPutMethodInRequest(t *testing.T) {
 func TestGetJSON_SuccessfulRequest_ExpectGETMethodInRequest(t *testing.T) {
 	s, recorder := aduket.NewServer(http.MethodGet, "/test", aduket.StatusCode(200))
 	cli := client.New(client.WithHost(s.URL), client.WithHTTPClient(&http.Client{}))
-	req := cli.NewRequest(ctx).Path("/test").
+	req := cli.NewRequest().Path("/test").
 		Method(http.MethodPatch).
 		AddHeader("X-R", "req")
 
@@ -52,7 +52,7 @@ func TestGetJSON_SuccessfulRequest_ExpectGETMethodInRequest(t *testing.T) {
 func TestGetXML_SuccessfulRequest_ExpectGETMethodInRequest(t *testing.T) {
 	s, recorder := aduket.NewServer(http.MethodGet, "/test")
 	cli := client.New(client.WithHost(s.URL))
-	req := cli.NewRequest(ctx).Path("/test").
+	req := cli.NewRequest().Path("/test").
 		Method(http.MethodPatch).
 		AddHeader("X-R", "req")
 
@@ -72,7 +72,7 @@ func TestParseJSON_SuccessfulRequest_FillGivenResponseStruct(t *testing.T) {
 	}
 	s, _ := aduket.NewServer(http.MethodGet, "/orders", aduket.JSONBody(expectedTestStruct))
 	cli := client.New(client.WithHost(s.URL))
-	req := cli.NewRequest(ctx).Path("/orders")
+	req := cli.NewRequest().Path("/orders")
 
 	var actualTestStruct Test
 	err := cli.ParseJSON(ctx, req, &actualTestStruct)
@@ -92,7 +92,7 @@ func TestParseXML_SuccessfulRequest_FillGivenResponseStruct(t *testing.T) {
 	}
 	s, _ := aduket.NewServer(http.MethodGet, "/test", aduket.XMLBody(expectedTestStruct))
 	cli := client.New(client.WithHost(s.URL))
-	req := cli.NewRequest(ctx).Path("/test")
+	req := cli.NewRequest().Path("/test")
 
 	var actualTestStruct Test
 	err := cli.ParseXML(ctx, req, &actualTestStruct)
@@ -104,7 +104,7 @@ func TestParseXML_SuccessfulRequest_FillGivenResponseStruct(t *testing.T) {
 func TestParse_CorruptedBody_ReturnErr(t *testing.T) {
 	s, _ := aduket.NewServer(http.MethodGet, "/orders", aduket.CorruptedBody())
 	cli := client.New(client.WithHost(s.URL))
-	req := cli.NewRequest(ctx).Path("/orders")
+	req := cli.NewRequest().Path("/orders")
 
 	err := cli.Parse(ctx, req, nil, nil)
 	assert.NotNil(t, err)
@@ -112,7 +112,7 @@ func TestParse_CorruptedBody_ReturnErr(t *testing.T) {
 
 func TestParse_DoFailed_ReturnErr(t *testing.T) {
 	cli := client.New(client.WithHost("local:host:3000"))
-	req := cli.NewRequest(ctx) // to fail new request with context
+	req := cli.NewRequest() // to fail new request with context
 
 	err := cli.Parse(ctx, req, nil, nil)
 	assert.NotNil(t, err)
@@ -135,7 +135,7 @@ func TestDo_5XXStatusCode_RetryNTimes(t *testing.T) {
 	}))
 
 	cli := client.New(client.WithHost(s.URL), client.WithRetry(_maxRetryCount, _retryInterval))
-	_, _ = cli.Do(ctx, cli.NewRequest(ctx))
+	_, _ = cli.Do(ctx, cli.NewRequest())
 
 	assert.Equal(t, expectedCount, count)
 	assert.Equal(t, "3", xRetryHeaderValue)
@@ -159,7 +159,7 @@ func TestDo_5XXStatusCode_RetryIntervalShouldIncreaseExponentialy(t *testing.T) 
 	}))
 
 	cli := client.New(client.WithHost(s.URL), client.WithRetry(_maxRetryCount, _retryInterval))
-	_, _ = cli.Do(ctx, cli.NewRequest(ctx))
+	_, _ = cli.Do(ctx, cli.NewRequest())
 
 	assert.GreaterOrEqual(t, capturedTimes[1].Sub(capturedTimes[0]), 500*time.Millisecond)
 	assert.GreaterOrEqual(t, capturedTimes[2].Sub(capturedTimes[1]), 750*time.Millisecond)
@@ -176,7 +176,7 @@ func TestDo_ReachMaxRetry_SaveRequestToDeadLetter(t *testing.T) {
 	})
 
 	cli := client.New(client.WithHost(s.URL), client.WithDeadLetter(mockDeadLetter), client.WithRetry(3, 1*time.Millisecond))
-	_, _ = cli.Do(ctx, cli.NewRequest(ctx).Path("/test"))
+	_, _ = cli.Do(ctx, cli.NewRequest().Path("/test"))
 }
 
 func TestDo_SaveDeadLetterFailedAfterReachingMaxRetry_ReturnErr(t *testing.T) {
@@ -186,7 +186,7 @@ func TestDo_SaveDeadLetterFailedAfterReachingMaxRetry_ReturnErr(t *testing.T) {
 	mockDeadLetter.EXPECT().Save(gomock.Any()).Return(errors.New("error"))
 
 	cli := client.New(client.WithHost(s.URL), client.WithDeadLetter(mockDeadLetter), client.WithRetry(1, 1*time.Millisecond))
-	_, err := cli.Do(ctx, cli.NewRequest(ctx).Path("/test"))
+	_, err := cli.Do(ctx, cli.NewRequest().Path("/test"))
 
 	assert.NotNil(t, err)
 	assert.Equal(t, "letter could not saved: error", err.Error())
@@ -204,7 +204,7 @@ func TestDo_MultipleRequestsAtOnce_RateLimitAndWait(t *testing.T) {
 
 	for i := 0; i < 100; i++ {
 		ctx = context.Background()
-		_, _ = cli.Do(ctx, cli.NewRequest(ctx).Path("/test"))
+		_, _ = cli.Do(ctx, cli.NewRequest().Path("/test"))
 	}
 
 	assert.GreaterOrEqual(t, time.Since(startTime), 3*time.Second)
@@ -214,7 +214,7 @@ func TestDo_ValidRequest_CaptureTheHTTPRequestWithTheGivenParameters(t *testing.
 	s, recorder := aduket.NewServer(http.MethodPost, "/basket/1")
 	cli := client.New(client.WithHost(s.URL))
 
-	req := cli.NewRequest(ctx).
+	req := cli.NewRequest().
 		Method(http.MethodPost).
 		Path("/basket/%d", 1).
 		AddQuery("customerId", "12321").
@@ -240,7 +240,7 @@ func TestDo_ValidRequest_CaptureTheHTTPRequestWithTheGivenParameters(t *testing.
 
 func TestDo_WrongHTTPMethod_ReturnErr(t *testing.T) {
 	cli := client.New(client.WithHost("http://localhost:3000"))
-	req := cli.NewRequest(ctx).Method(",") // to fail new request with context
+	req := cli.NewRequest().Method(",") // to fail new request with context
 
 	_, err := cli.Do(ctx, req)
 
@@ -249,7 +249,7 @@ func TestDo_WrongHTTPMethod_ReturnErr(t *testing.T) {
 
 func TestDo_InvalidHost_ReturnErr(t *testing.T) {
 	cli := client.New(client.WithHost("local:host:3000"))
-	req := cli.NewRequest(ctx) // to fail new request with context
+	req := cli.NewRequest() // to fail new request with context
 
 	_, err := cli.Do(ctx, req)
 

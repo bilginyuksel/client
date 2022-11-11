@@ -7,6 +7,7 @@ import (
 	"golang.org/x/time/rate"
 )
 
+// Option is a function that configures a client
 type Option func(c *Client)
 
 // WithHost create client option function with host

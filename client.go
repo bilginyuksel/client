@@ -22,6 +22,10 @@ const (
 	_retryIntervalCoef = 1.5
 )
 
+// Client is a wrapper for http.Client
+// Has easy to use methods to send http requests
+// Provides a deadletter to save requests that could not be sent
+// and a rate limiter to limit the number of requests per second
 type Client struct {
 	httpClient    *http.Client
 	host          string

@@ -1,7 +1,6 @@
 package client
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 
@@ -10,7 +9,6 @@ import (
 
 // Request use this request struct to send http requests
 type Request struct {
-	ctx     context.Context
 	method  string
 	host    string
 	path    string
@@ -22,9 +20,8 @@ type Request struct {
 }
 
 // NewRequest creates a new request with the given context
-func (c *Client) NewRequest(ctx context.Context) *Request {
+func (c *Client) NewRequest() *Request {
 	return &Request{
-		ctx:     ctx,
 		host:    c.host,
 		method:  http.MethodGet,
 		query:   make(map[string][]string),
@@ -38,6 +35,7 @@ func (r *Request) Host(host string) *Request {
 	return r
 }
 
+// Body set the body of the request
 func (r *Request) Body(body []byte) *Request {
 	r.body = body
 	return r
@@ -86,6 +84,7 @@ func (r *Request) AddHeader(key string, value ...string) *Request {
 	return r
 }
 
+// SetBasicAuth sets the basic auth header
 func (r *Request) SetBasicAuth(username, password string) *Request {
 	r.manipulators = append(r.manipulators, func(r *http.Request) {
 		r.SetBasicAuth(username, password)
@@ -93,6 +92,7 @@ func (r *Request) SetBasicAuth(username, password string) *Request {
 	return r
 }
 
+// URL returns the url of the request
 func (r *Request) URL() (string, error) {
 	rawpath := fmt.Sprintf("%s%s", r.host, r.path)
 	url, err := urlpkg.Parse(rawpath)
